@@ -31,19 +31,20 @@
             </button>
             <div class="collapse navbar-collapse" id="navMain">
                 <ul class="navbar-nav ms-auto mb-2 mb-lg-0 align-items-center">
-                    <li class="nav-item me-3">
-                        <span class="badge bg-outline-light text-light border border-secondary px-3 py-2">
-                            <i class="bi bi-geo-alt me-1 text-info"></i> {{ profile.operational_city }}
-                        </span>
+                    <li class="nav-item me-2">
+                        <button class="btn btn-outline-info btn-sm px-3" data-bs-toggle="modal" data-bs-target="#settingsModal">
+                            <i class="bi bi-geo-alt-fill me-1"></i> {{ profile.operational_city }} (${{ profile.min_budget|floatformat:0 }}-${{ profile.max_budget|floatformat:0 }})
+                            <i class="bi bi-pencil-square ms-1"></i>
+                        </button>
                     </li>
-                    <li class="nav-item me-3">
-                        <span class="badge bg-outline-light text-light border border-secondary px-3 py-2">
-                            <i class="bi bi-cash-coin me-1 text-success"></i> ${ profile.min_budget|floatformat:0 }} - ${ profile.max_budget|floatformat:0 }} USD
-                        </span>
-                    </li>
-                    <li class="nav-item">
+                    <li class="nav-item me-2">
                         <a class="btn btn-primary btn-sm px-3" data-bs-toggle="modal" data-bs-target="#importModal">
                             <i class="bi bi-plus-circle me-1"></i> Pegar Oferta
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="btn btn-warning btn-sm text-dark px-3 fw-bold" data-bs-toggle="modal" data-bs-target="#bookmarkletModal">
+                            <i class="bi bi-bookmark-star-fill me-1"></i> 1-Click Capture
                         </a>
                     </li>
                 </ul>
@@ -55,6 +56,47 @@
     <main class="container py-4">
         {% block content %}{% endblock %}
     </main>
+
+    <!-- Settings Modal -->
+    <div class="modal fade" id="settingsModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header bg-dark text-white">
+                    <h5 class="modal-title"><i class="bi bi-sliders me-2 text-info"></i>Ajustes de Mercado y Presupuesto</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form action="{% url 'update_settings' %}" method="POST">
+                    {% csrf_token %}
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Ciudad Operacional (Donde compras):</label>
+                            <input type="text" name="operational_city" class="form-control" value="{{ profile.operational_city }}" required placeholder="Ej: Maturín, Caracas, Valencia...">
+                            <div class="form-text">El sistema solo marcará como **Oportunidades de Compra** las ofertas creadas en esta ciudad.</div>
+                        </div>
+                        <div class="row g-2 mb-3">
+                            <div class="col-6">
+                                <label class="form-label fw-bold">Presupuesto Mínimo ($):</label>
+                                <input type="number" step="10" name="min_budget" class="form-control" value="{{ profile.min_budget|floatformat:0 }}" required>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label fw-bold">Presupuesto Máximo ($):</label>
+                                <input type="number" step="10" name="max_budget" class="form-control" value="{{ profile.max_budget|floatformat:0 }}" required>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Ganancia Neta Objetivo por Teléfono ($):</label>
+                            <input type="number" step="5" name="min_profit" class="form-control" value="{{ profile.min_profit|floatformat:0 }}" required>
+                            <div class="form-text">Ejemplo: $30, $40 o $50. Ofertas por debajo se marcarán como insuficientes.</div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary px-4"><i class="bi bi-check-circle me-1"></i> Guardar Ajustes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 
     <!-- Import Modal -->
     <div class="modal fade" id="importModal" tabindex="-1" aria-hidden="true">
@@ -68,11 +110,11 @@
                     {% csrf_token %}
                     <div class="modal-body">
                         <div class="mb-3">
-                            <label class="form-label font-weight-bold">Pega la descripción completa del anuncio de Facebook / WhatsApp:</label>
+                            <label class="form-label fw-bold">Pega la descripción completa del anuncio de Facebook / WhatsApp:</label>
                             <textarea name="raw_text" class="form-control" rows="4" placeholder="Ej: iPhone 11 128gb bateria 85% pantalla impecable en Maturin $180..." required></textarea>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">Ciudad de la Publicación:</label>
+                            <label class="form-label fw-bold">Ciudad del Anuncio:</label>
                             <input type="text" name="city" class="form-control" value="{{ profile.operational_city }}">
                         </div>
                     </div>
@@ -81,6 +123,43 @@
                         <button type="submit" class="btn btn-primary px-4"><i class="bi bi-search me-1"></i> Evaluar Oportunidad</button>
                     </div>
                 </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bookmarklet / Helper Modal (0 Risk of Meta Ban) -->
+    <div class="modal fade" id="bookmarkletModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header bg-dark text-white">
+                    <h5 class="modal-title"><i class="bi bi-shield-check me-2 text-success"></i>Captura en 1-Clic para Marketplace (Sin Bloqueos de Meta)</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-success d-flex align-items-center">
+                        <i class="bi bi-check-circle-fill fs-3 me-3"></i>
+                        <div>
+                            <strong>100% Seguro y Cumple con Políticas:</strong> Navegas normalmente en tu cuenta de Facebook sin usar bots ni scrapers. Cuando ves un iPhone interesante, este botón lee la información visible de la pantalla y la envía a tu Dashboard.
+                        </div>
+                    </div>
+
+                    <h6 class="fw-bold mt-3">📌 Cómo instalarlo en tu navegador (Chrome, Edge, Firefox):</h6>
+                    <ol class="small text-secondary mb-3">
+                        <li>Asegúrate de tener visible la <strong>Barra de Marcadores</strong> de tu navegador (Ctrl + Mayús + B).</li>
+                        <li>Arrastra el botón amarillo de abajo directamente a tu barra de marcadores:</li>
+                    </ol>
+
+                    <div class="text-center my-4">
+                        <a class="btn btn-warning btn-lg fw-bold shadow-sm px-4" href="javascript:(function(){var t=document.body.innerText;var url=window.location.href;fetch('http://127.0.0.1:8000/api/import/',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({raw_text:t,url:url,city:'{{ profile.operational_city }}'})}).then(r=>r.json()).then(d=>alert('✅ Oferta enviada a iPhone Deal Finder!\nEstado: '+d.opportunity_status+'\nGanancia: $'+d.projected_profit)).catch(e=>alert('⚠️ Error al enviar. Asegúrate que Django esté corriendo en 127.0.0.1:8000'));})();">
+                            📌 Capturar Oferta en iPhone Deal Finder
+                        </a>
+                    </div>
+
+                    <p class="small text-muted mb-0"><i class="bi bi-info-circle me-1"></i>Al hacer clic mientras estás viendo cualquier publicación de Facebook Marketplace, la información se enviará e interpretará automáticamente en tu panel.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                </div>
             </div>
         </div>
     </div>
