@@ -1,0 +1,34 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: iphone_deal_db
+    restart: always
+    environment:
+      POSTGRES_DB: iphone_deal_finder
+      POSTGRES_USER: iphone_user
+      POSTGRES_PASSWORD: iphone_password_secret
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  web:
+    build: .
+    container_name: iphone_deal_web
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    environment:
+      - DB_NAME=iphone_deal_finder
+      - DB_USER=iphone_user
+      - DB_PASSWORD=iphone_password_secret
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DEBUG=1
+    depends_on:
+      - db
+
+volumes:
+  postgres_data:
