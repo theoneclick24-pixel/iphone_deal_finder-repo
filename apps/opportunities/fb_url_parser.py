@@ -23,14 +23,16 @@ def fetch_fb_marketplace_url(url: str) -> dict:
         with urllib.request.urlopen(req, timeout=6) as response:
             html = response.read().decode('utf-8', errors='ignore')
             
-            # Extract og:title, og:description
+            # Extract og:title, og:description, og:image
             title_match = re.search(r'<meta\s+property=["\']og:title["\']\s+content=["\'](.*?)["\']', html, re.I) or \
                           re.search(r'<title>(.*?)</title>', html, re.I)
             desc_match = re.search(r'<meta\s+property=["\']og:description["\']\s+content=["\'](.*?)["\']', html, re.I) or \
                          re.search(r'<meta\s+name=["\']description["\']\s+content=["\'](.*?)["\']', html, re.I)
-            
+            image_match = re.search(r'<meta\s+property=["\']og:image["\']\s+content=["\'](.*?)["\']', html, re.I)
+
             title = title_match.group(1) if title_match else ""
             description = desc_match.group(1) if desc_match else ""
+            image_url = image_match.group(1) if image_match else ""
             
             combined_text = f"{title} {description}".strip()
             
@@ -38,6 +40,7 @@ def fetch_fb_marketplace_url(url: str) -> dict:
                 "raw_text": combined_text if combined_text else cleaned_url,
                 "title": title,
                 "description": description,
+                "image_url": image_url,
                 "url": cleaned_url,
                 "success": True
             }

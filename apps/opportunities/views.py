@@ -96,6 +96,7 @@ def process_listing_input(user, input_text: str, city: str, explicit_url: str = 
     target_url = explicit_url
     raw_text_to_parse = input_text
 
+    image_url_val = None
     # URL Detection
     url_match = re.search(r'https?://[^\s]+|facebook\.com/[^\s]+|fb\.com/[^\s]+', input_text)
     if url_match:
@@ -103,6 +104,7 @@ def process_listing_input(user, input_text: str, city: str, explicit_url: str = 
         # Fetch metadata from Facebook URL
         fetched = fetch_fb_marketplace_url(target_url)
         raw_text_to_parse = f"{input_text} {fetched['raw_text']}"
+        image_url_val = fetched.get('image_url')
 
     parsed = parse_listing_text(raw_text_to_parse, location_hint=city)
     extracted = parsed['extracted']
@@ -134,6 +136,7 @@ def process_listing_input(user, input_text: str, city: str, explicit_url: str = 
         source=SourceType.FACEBOOK,
         raw_title=raw_text_to_parse[:250],
         listing_url=target_url,
+        image_url=image_url_val,
         city=city,
         asking_price_usd=asking,
         battery_health_pct=extracted['battery_health'],

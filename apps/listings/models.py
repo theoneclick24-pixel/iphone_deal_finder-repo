@@ -44,6 +44,7 @@ class Listing(models.Model):
     listing_url = models.URLField(max_length=500, null=True, blank=True)
     city = models.CharField(max_length=100, help_text="Ciudad de origen de la publicación.")
     asking_price_usd = models.DecimalField(max_digits=10, decimal_places=2, help_text="Precio pedido ($ USD).")
+    image_url = models.URLField(max_length=1000, null=True, blank=True, help_text="URL de la imagen principal del anuncio.")
     
     # Condition & Defects
     battery_health_pct = models.IntegerField(null=True, blank=True, help_text="Porcentaje de salud de batería (%).")
