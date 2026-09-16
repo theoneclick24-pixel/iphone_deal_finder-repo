@@ -1,4 +1,5 @@
 import json
+import re
 from decimal import Decimal
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
@@ -8,6 +9,7 @@ from apps.catalog.models import IPhoneModel, StorageCapacity, ColorTier, Product
 from apps.listings.models import Listing, SourceType, ScreenCondition
 from apps.opportunities.models import Opportunity, OpportunityStatus
 from apps.opportunities.services import OpportunityEngine
+from apps.opportunities.fb_url_parser import fetch_fb_marketplace_url
 from prototype_fb_capture import parse_listing_text
 
 def get_demo_user():
@@ -18,7 +20,7 @@ def get_demo_user():
 def dashboard_view(request):
     """
     Phase 8: User Private Dashboard.
-    Displays opportunity cards, active filters, metrics header, and bookmarklet helper.
+    Displays opportunity cards, active filters, metrics header, and URL/Text import modal.
     """
     user = get_demo_user()
     profile = user.profile
@@ -83,9 +85,26 @@ def update_settings_view(request):
     return redirect('dashboard')
 
 
-def process_listing_data(user, raw_text: str, city: str, listing_url: str = None) -> Opportunity:
-    """Core helper that parses visible text, matches variant, creates listing, and evaluates opportunity."""
-    parsed = parse_listing_text(raw_text, location_hint=city)
+def process_listing_input(user, input_text: str, city: str, explicit_url: str = None) -> Opportunity:
+    """
+    Intelligent processor:
+    Checks if input_text is a URL or contains a URL.
+    If it's a URL, fetches metadata automatically from Facebook.
+    Extracts attributes and generates an evaluated Opportunity.
+    """
+    input_text = input_text.strip()
+    target_url = explicit_url
+    raw_text_to_parse = input_text
+
+    # URL Detection
+    url_match = re.search(r'https?://[^\s]+|facebook\.com/[^\s]+|fb\.com/[^\s]+', input_text)
+    if url_match:
+        target_url = url_match.group(0)
+        # Fetch metadata from Facebook URL
+        fetched = fetch_fb_marketplace_url(target_url)
+        raw_text_to_parse = f"{input_text} {fetched['raw_text']}"
+
+    parsed = parse_listing_text(raw_text_to_parse, location_hint=city)
     extracted = parsed['extracted']
 
     # Match iPhone Model
@@ -113,8 +132,8 @@ def process_listing_data(user, raw_text: str, city: str, listing_url: str = None
         user=user,
         variant=variant,
         source=SourceType.FACEBOOK,
-        raw_title=raw_text[:250],
-        listing_url=listing_url,
+        raw_title=raw_text_to_parse[:250],
+        listing_url=target_url,
         city=city,
         asking_price_usd=asking,
         battery_health_pct=extracted['battery_health'],
@@ -128,16 +147,16 @@ def process_listing_data(user, raw_text: str, city: str, listing_url: str = None
 
 
 def import_listing_view(request):
-    """Standard form view to paste listing text."""
+    """View to import listings from pasted URL or text description."""
     user = get_demo_user()
 
     if request.method == 'POST':
-        raw_text = request.POST.get('raw_text', '').strip()
+        raw_input = request.POST.get('raw_text', '').strip()
         city = request.POST.get('city', user.profile.operational_city).strip()
         listing_url = request.POST.get('listing_url', '').strip() or None
 
-        if raw_text:
-            process_listing_data(user, raw_text, city, listing_url)
+        if raw_input or listing_url:
+            process_listing_input(user, raw_input or listing_url, city, explicit_url=listing_url)
 
         return redirect('dashboard')
 
@@ -147,8 +166,7 @@ def import_listing_view(request):
 @csrf_exempt
 def api_import_listing_view(request):
     """
-    Compliance-Safe API Endpoint for 1-Click Browser Bookmarklet / Helper Extension.
-    Receives visible listing text directly from the user's active Marketplace session.
+    API Endpoint for Bookmarklet or Extension. Accepts URL or text and auto-fetches data.
     """
     user = get_demo_user()
 
@@ -158,14 +176,14 @@ def api_import_listing_view(request):
         except Exception:
             data = request.POST
 
-        raw_text = data.get('raw_text', '') or data.get('title', '')
+        raw_text = data.get('raw_text', '') or data.get('url', '')
         city = data.get('city', user.profile.operational_city)
         url = data.get('url', None)
 
-        if not raw_text:
-            return JsonResponse({'status': 'error', 'message': 'No text provided'}, status=400)
+        if not raw_text and not url:
+            return JsonResponse({'status': 'error', 'message': 'No text or URL provided'}, status=400)
 
-        opportunity = process_listing_data(user, raw_text, city, listing_url=url)
+        opportunity = process_listing_input(user, raw_text or url, city, explicit_url=url)
 
         return JsonResponse({
             'status': 'success',
