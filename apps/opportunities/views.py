@@ -85,68 +85,16 @@ def update_settings_view(request):
     return redirect('dashboard')
 
 
+from apps.application.services import AnalyzeListingUseCase
+
 def process_listing_input(user, input_text: str, city: str, explicit_url: str = None) -> Opportunity:
     """
-    Intelligent processor:
-    Checks if input_text is a URL or contains a URL.
-    If it's a URL, fetches metadata automatically from Facebook.
-    Extracts attributes and generates an evaluated Opportunity.
+    Delegates to Application Layer AnalyzeListingUseCase.
+    Performs Clean Layered Architecture workflow:
+    Adapters -> Canonical Data -> Domain Valuation -> Opportunity Engine.
     """
-    input_text = input_text.strip()
-    target_url = explicit_url
-    raw_text_to_parse = input_text
-
-    image_url_val = None
-    # URL Detection
-    url_match = re.search(r'https?://[^\s]+|facebook\.com/[^\s]+|fb\.com/[^\s]+', input_text)
-    if url_match:
-        target_url = url_match.group(0)
-        # Fetch metadata from Facebook URL
-        fetched = fetch_fb_marketplace_url(target_url)
-        raw_text_to_parse = f"{input_text} {fetched['raw_text']}"
-        image_url_val = fetched.get('image_url')
-
-    parsed = parse_listing_text(raw_text_to_parse, location_hint=city)
-    extracted = parsed['extracted']
-
-    # Match iPhone Model
-    iphone_model_obj = IPhoneModel.objects.filter(name__icontains=extracted['model']).first()
-    if not iphone_model_obj:
-        iphone_model_obj = IPhoneModel.objects.first()
-
-    storage_gb = int(extracted['storage'].replace('GB', '')) if extracted['storage'] else 128
-    storage_obj, _ = StorageCapacity.objects.get_or_create(gb=storage_gb)
-
-    is_premium = "Silver" in extracted['color_tier'] or "White" in extracted['color_tier']
-    color_obj = ColorTier.objects.filter(is_premium_tier=is_premium).first() or ColorTier.objects.first()
-
-    # Base reference price
-    asking = Decimal(str(extracted['price_usd'] or 150))
-    variant, _ = ProductVariant.objects.get_or_create(
-        iphone_model=iphone_model_obj,
-        storage=storage_obj,
-        color_tier=color_obj,
-        defaults={'base_reference_price_usd': asking + Decimal('60.00')}
-    )
-
-    # Create listing
-    listing = Listing.objects.create(
-        user=user,
-        variant=variant,
-        source=SourceType.FACEBOOK,
-        raw_title=raw_text_to_parse[:250],
-        listing_url=target_url,
-        image_url=image_url_val,
-        city=city,
-        asking_price_usd=asking,
-        battery_health_pct=extracted['battery_health'],
-        screen_condition=ScreenCondition.CRACKED if extracted['screen_condition'] == 'Cracked / Broken Screen' else ScreenCondition.INTACT,
-        face_id_working='Face ID Broken' not in extracted['defects'],
-        camera_working='Camera Defect' not in extracted['defects']
-    )
-
-    # Evaluate opportunity
-    return OpportunityEngine.evaluate_and_save_opportunity(user, listing)
+    raw_input = explicit_url or input_text
+    return AnalyzeListingUseCase.execute(user, raw_input, city)
 
 
 def import_listing_view(request):

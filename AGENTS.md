@@ -1,12 +1,12 @@
-# iPhone Deal Finder — Master Project & Agent Guidelines (AGENTS.md)
+# iPhone Deal Finder — Master Architectural Specification & Agent Guidelines (AGENTS.md)
 
-## 1. Executive Summary & Business Vision
-iPhone Deal Finder is a multi-tenant SaaS platform that helps local electronics buyers and deal-hunters identify, evaluate, and capitalize on profitable used iPhone listings in their operational market.
+## 1. Executive Summary & Vision
+iPhone Deal Finder is a multi-tenant SaaS platform that empowers electronics buyers and deal-hunters to identify, evaluate, and capitalize on profitable used iPhone listings in their operational market.
 
 ### Core Business Unit Economics & Criteria
-- **Target Purchase Range:** $100 – $250 per device.
+- **Target Purchase Range:** $100 – $250 per device (Configurable per user).
 - **Target Resale Timeframe:** Fast turnover (1 to 2 weeks).
-- **Target Minimum Profit:** $30 minimum profit margin per device (Ideal target: $40 – $50+).
+- **Target Minimum Profit:** $30 minimum profit margin per device (Configurable per user; Ideal: $40 – $50+).
 - **Usability Priorities:**
   1. **Functional:** Real-time accuracy in market reference data and valuation formulas.
   2. **Practical:** Faster and easier to use than manual spreadsheet/browsing analysis.
@@ -14,127 +14,104 @@ iPhone Deal Finder is a multi-tenant SaaS platform that helps local electronics 
 
 ---
 
-## 2. Core Business Logic & Domain Rules
+## 2. Core Business Logic & Mandatory Domain Rules
 
 ### Operational Market vs. Reference Market (CRITICAL SEPARATION)
-- **Operational Market:** The specific city/market where the user actually buys and flips devices (e.g., Maturín, Monagas).
+- **Operational Market:** The specific city/market where the user buys and flips devices (e.g., Maturín, Monagas).
   - Listings from the operational market are candidates to become **Operational Opportunities**.
-- **Reference Market:** Price observations from other cities (e.g., Caracas, Valencia) or external platforms (e.g., Amazon Used/Refurbished).
+- **Reference Market:** Price observations from other cities (e.g., Caracas, Valencia) or external platforms (e.g., Amazon Refurbished).
   - Used *exclusively* for computing market statistics (averages, medians, P25, P75) and measuring local market speculation.
-  - **CRITICAL RULE:** Never classify a listing from a non-operational city as an operational buying opportunity, regardless of how attractive the price appears.
+  - **MANDATORY RULE:** Never classify a listing from a non-operational city as an operational buying opportunity, regardless of how attractive the price appears.
 
-### Product Identity & Attribute Granularity
-Market statistics, reference benchmarks, and resale valuations MUST be segmented strictly by:
-1. **Exact Model:** (e.g., iPhone 11, iPhone 12 Pro)
-2. **Storage Capacity:** (e.g., 64GB, 128GB, 256GB, 512GB). *Do not mix storage capacities into the same market statistic.*
-3. **Color Tier:** (e.g., Silver/White [high demand/premium], Black [common], Product Red/Others).
-4. **Condition & Defect Adjustments:**
-   - **Battery Health %:** (e.g., <80% requires battery replacement cost deduction).
-   - **Screen Condition:** Intact vs. scratches vs. cracked screen.
-   - **Body / Cosmetic Scratches.**
-   - **Hardware Defects:** Face ID working/broken, Main/Front Camera issues.
-   - *Condition adjustments must be configurable and evidence-based (no hardcoded arbitrary guesses).*
+### Strict Data Integrity & No Fake Inferences
+- **NEVER invent or guess attributes:** If color, storage, battery %, screen condition, or defects are not explicitly present in raw data, they MUST be recorded as `NULL` / `Unspecified`. Never hardcode arbitrary defaults.
+- **NO fake profit or offset calculations:** Valuation and profit margin calculations MUST be backed by real reference evidence (Amazon Used Reference Price, Regional Medians), NOT arbitrary offsets (e.g. `price + 60`).
 
 ---
 
-## 3. Data Pipelines & Multi-Source Architecture
+## 3. Mandatory Layered Architecture Specification
 
-The platform uses a modular adapter pattern:
-`Source Adapter -> Raw Listing -> Normalized Domain -> Valuation Engine`
+```text
+                         ┌──────────────────────┐
+                         │       CLIENTES       │
+                         │ Web / futuro móvil   │
+                         └──────────┬───────────┘
+                                    │
+                                    ▼
+                         ┌──────────────────────┐
+                         │    PRESENTATION      │
+                         │ Dashboard / UI       │
+                         └──────────┬───────────┘
+                                    │
+                                    ▼
+                         ┌──────────────────────┐
+                         │     APPLICATION      │
+                         │ Use Cases / API      │
+                         └──────────┬───────────┘
+                                    │
+                                    ▼
+                         ┌──────────────────────┐
+                         │       DOMAIN         │
+                         │ Reglas de negocio    │
+                         └──────────┬───────────┘
+                                    │
+              ┌─────────────────────┼─────────────────────┐
+              │                     │                     │
+              ▼                     ▼                     ▼
+       DATA INGESTION          MARKET DATA          USER DATA
+       / ADAPTERS              / ANALYTICS           / AUTH
+              │                     │                     │
+              └─────────────────────┼─────────────────────┘
+                                    ▼
+                         ┌──────────────────────┐
+                         │   INFRASTRUCTURE     │
+                         │ PostgreSQL / Redis   │
+                         │ Storage / Jobs       │
+                         └──────────────────────┘
+```
 
-1. **Facebook Marketplace Adapter:** Primary local operational & regional reference source.
-2. **WhatsApp Pipeline Adapter (Future Expansion):** Ingestion of local WhatsApp groups and status updates tagged for the user's city (e.g., local Maturín resale groups).
-3. **Amazon Reference Adapter:** Ingests refurbished/used iPhone benchmark prices from Amazon to gauge local market speculation vs global market value.
+### Layer Responsibilities
+1. **Presentation Layer (`apps.presentation` / Templates):** Render UI, receive user clicks. Must NEVER calculate medians, profit, or condition adjustments.
+2. **Application Layer (`apps.application`):** Use cases (e.g., `AnalyzeListing`, `CalculateMarketReference`, `DetectOpportunity`). Coordinates workflows without hardcoding business rules in UI or API.
+3. **Domain Layer (`apps.domain`):** Pure business logic (Model, Storage, Color, Condition, Fair Valuation, Opportunity Detection). Knows NOTHING about Facebook, WhatsApp, or HTML.
+4. **Data Ingestion / Adapters (`apps.adapters`):** Source adapters (Facebook, WhatsApp, Amazon, Manual). Converts source-specific raw data into canonical `NormalizedListing`.
+5. **Normalization Layer (`apps.normalization`):** Transforms raw titles and descriptions into standardized canonical domain objects.
+6. **Market Data Layer (`apps.market`):** Stores and calculates market observations, medians, P25, P75, and Amazon reference benchmarks. Does NOT decide what to buy.
+7. **Valuation Layer (`apps.valuation`):** Calculates condition deductions and fair estimated resale value based on market reference evidence.
+8. **Opportunity Engine (`apps.opportunities`):** Evaluates if a listing meets user-specific operational city, budget range, and profit margin target.
+9. **User / Auth Layer (`apps.accounts`):** Manages user accounts, operational market setting, budget limits, and target profit margins.
+10. **Infrastructure Layer (`config`, Docker, PostgreSQL):** Database persistence, background jobs, external API clients.
 
 ---
 
-## 4. Platform Delivery Options & Recommended Architecture
+## 4. Architectural Rules for Agents
 
-### Architecture Proposal: Hybrid Web Monolith + Browser-Assisted Capture
-- **Backend Framework:** Django (Python 3.12+) — Clean, robust monolithic architecture.
-- **Database:** PostgreSQL (Multi-tenant ready schema: Shared schema with `tenant_id` user isolation).
-- **Frontend MVP:** Django Templates + Alpine.js / HTMX + Bootstrap 5 (Responsive, fast, interactive).
-- **Data Capture Helper:** Lightweight Browser Extension or user-assisted bookmarklet for local Marketplace/WhatsApp capture.
-
-### Architectural Data Flow Diagram
-
-```mermaid
-graph TD
-    subgraph Data Pipelines / Adapters
-        FB[Facebook Marketplace Adapter]
-        WA[WhatsApp Groups/Status Adapter]
-        AMZ[Amazon Reference Adapter]
-    end
-
-    subgraph Core Domain Monolith - Django
-        NORM[Normalizer & Deduplicator]
-        REF_ENG[Market Reference Engine<br/>Medians, Averages, Speculation Index]
-        VAL_ENG[Valuation Engine<br/>Condition Deductions & Fair Price]
-        OPP_ENG[Opportunity Engine<br/>Local City Only + Profit Criteria]
-    end
-
-    subgraph Storage & Security
-        DB[(PostgreSQL Database<br/>Tenant Isolated Data)]
-    end
-
-    subgraph User Interface
-        DASH[Private User Dashboard<br/>Opportunities, Profit Explanations, CRM Drafts]
-    end
-
-    FB --> NORM
-    WA --> NORM
-    AMZ --> NORM
-    NORM --> REF_ENG
-    NORM --> VAL_ENG
-    REF_ENG --> VAL_ENG
-    VAL_ENG --> OPP_ENG
-    OPP_ENG --> DB
-    DB --> DASH
+```markdown
+## Architectural Separation Rules
+1. The system MUST be modular. Each module has ONE clear responsibility.
+2. Source-specific logic must stay inside source adapters (`apps/adapters/`).
+3. Business rules must NOT depend on a specific data source.
+4. Presentation logic (templates/views) must NOT contain business rules or financial calculations.
+5. Market reference data must remain strictly separate from operational user opportunities.
+6. Valuation logic must remain separate from opportunity detection logic.
+7. Authentication and user configuration must remain separate from market analysis.
+8. Data attributes (color, storage, defects) must NEVER be invented; missing attributes remain NULL.
+9. New data sources must be added through Adapters producing canonical `NormalizedListing` objects.
 ```
 
 ---
 
-## 5. Multi-Tenant SaaS Requirements
+## 5. Development Roadmap
 
-- **User Data Isolation:** Each user owns their account, operational market settings, budget limits, target profit margins, saved listings, and negotiation notes.
-- **Configurable User Profile & Financial Parameters:**
-  1. **Configurable Capital/Budget Range (`min_budget`, `max_budget`):** Default $100–$250, but fully modifiable by each user according to their available working capital.
-  2. **Configurable Target Profit Margin (`min_profit`):** Default $30 (or $40–$50+), but fully modifiable per user.
-  3. **Configurable Operational Market (`operational_city`):** City where buying opportunities are filtered.
-- **Shared Reference Catalog:** Standardized iPhone catalog, model/storage definitions, and aggregated reference market prices are shared across tenants to prevent data duplication.
-- **Authentication & Settings:** Built-in Django authentication with user setting controls.
-
----
-
-## 6. CRITICAL: Compliance & Data Collection Feasibility Gate
-
-Meta/Facebook actively detects and enforces policies against unauthorized automated scraping.
-
-### Mandatory Rules for Data Collection
-- **NO Anti-Bot Evasion:** Do NOT implement CAPTCHA bypass, stealth browser fingerprinting, proxy rotation to dodge bans, credential theft, or unauthorized API scraping.
-- **Browser-Assisted Workflow:** Capture data through the user's normal, authenticated browser session or user-provided URLs/assisted imports.
-- **Feasibility Gate (Phase 1):** Validate visible field extraction (Title, Price, Location, URL, Model/Storage/Condition text) using a local prototype before building full ingestion pipelines.
-
----
-
-## 7. Development Roadmap
-
-- **Phase 0:** Master Specification & Git Setup (Completed).
-- **Phase 1:** Facebook Marketplace & Data Feasibility Prototype.
-- **Phase 2:** Development Environment (Docker + PostgreSQL + Django).
-- **Phase 3:** SaaS Foundations (User Auth, Settings, Operational Market Isolation).
-- **Phase 4:** Product Catalog Domain (iPhone Models, Storage, Color Tiers).
-- **Phase 5:** Listing & Condition Engine (Defect deductions, Battery health).
-- **Phase 6:** Market Reference & Speculation Engine (Amazon & Regional Statistics).
-- **Phase 7:** Valuation & Opportunity Engine (Profit = Estimated Resale - Purchase Price - Repairs).
-- **Phase 8:** User Dashboard & Opportunity Alerts.
-- **Phase 9:** WhatsApp & Multi-Source Adapter Expansion.
-- **Phase 10:** CRM & Seller Negotiation Helper (Manual deal tracking).
+- **Phase 0:** Specification & Git Setup (Completed).
+- **Phase 1:** Data Normalization & Adapter Prototype (Completed & Refined).
+- **Phase 2:** Containerized Environment (Docker + PostgreSQL + Django).
+- **Phase 3:** User Accounts & Operational Settings (Completed).
+- **Phase 4:** Product Catalog Domain (Completed).
+- **Phase 5:** Data Ingestion Adapters & Condition Engine (Refined to Layered Architecture).
+- **Phase 6:** Market Reference & Amazon Speculation Engine (Evidence-based).
+- **Phase 7:** Valuation Engine & Opportunity Engine (Clean Domain/Application Layer).
+- **Phase 8:** Presentation Layer / User Dashboard (Decoupled from business logic).
+- **Phase 9:** Multi-Source Adapter Expansion (WhatsApp, Amazon Refurbished API/Scraper).
+- **Phase 10:** CRM & Seller Negotiation Helper.
 - **Phase 11:** Production Cloud Deployment & SaaS Subscription Billing.
-
----
-
-## 8. Development & Agent Rules
-- Work incrementally and run verification checks (`git status`, tests) after every change.
-- Never commit secrets or expose user data.
-- Keep core business logic decoupled from scraping DOM structure.
