@@ -96,9 +96,13 @@ graph TD
 
 ## 5. Multi-Tenant SaaS Requirements
 
-- **User Data Isolation:** Each user owns their account, operational market settings, budget limits ($100–$250), target profit margins ($30–$50+), saved listings, and negotiation notes.
+- **User Data Isolation:** Each user owns their account, operational market settings, budget limits, target profit margins, saved listings, and negotiation notes.
+- **Configurable User Profile & Financial Parameters:**
+  1. **Configurable Capital/Budget Range (`min_budget`, `max_budget`):** Default $100–$250, but fully modifiable by each user according to their available working capital.
+  2. **Configurable Target Profit Margin (`min_profit`):** Default $30 (or $40–$50+), but fully modifiable per user.
+  3. **Configurable Operational Market (`operational_city`):** City where buying opportunities are filtered.
 - **Shared Reference Catalog:** Standardized iPhone catalog, model/storage definitions, and aggregated reference market prices are shared across tenants to prevent data duplication.
-- **Authentication & Settings:** Built-in Django authentication with configurable user profiles (`operational_city`, `min_budget`, `max_budget`, `min_profit`).
+- **Authentication & Settings:** Built-in Django authentication with user setting controls.
 
 ---
 
