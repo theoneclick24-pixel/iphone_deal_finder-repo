@@ -1,0 +1,143 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard — iPhone Deal Finder{% endblock %}
+
+{% block content %}
+<!-- Metrics Header -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card card-stat bg-white shadow-sm p-3">
+            <div class="d-flex align-items-center">
+                <div class="rounded-circle bg-success bg-opacity-10 p-3 me-3 text-success fs-3">
+                    <i class="bi bi-graph-up-arrow"></i>
+                </div>
+                <div>
+                    <h6 class="text-muted mb-1 small text-uppercase fw-bold">Oportunidades Aprobadas</h6>
+                    <h3 class="mb-0 fw-bold text-dark">{{ total_opportunities }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card card-stat bg-white shadow-sm p-3">
+            <div class="d-flex align-items-center">
+                <div class="rounded-circle bg-primary bg-opacity-10 p-3 me-3 text-primary fs-3">
+                    <i class="bi bi-wallet2"></i>
+                </div>
+                <div>
+                    <h6 class="text-muted mb-1 small text-uppercase fw-bold">Ganancia Promedio</h6>
+                    <h3 class="mb-0 fw-bold text-dark">${{ avg_profit }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card card-stat bg-white shadow-sm p-3">
+            <div class="d-flex align-items-center">
+                <div class="rounded-circle bg-warning bg-opacity-10 p-3 me-3 text-warning fs-3">
+                    <i class="bi bi-bullseye"></i>
+                </div>
+                <div>
+                    <h6 class="text-muted mb-1 small text-uppercase fw-bold">Objetivo de Ganancia</h6>
+                    <h3 class="mb-0 fw-bold text-dark">${{ profile.min_profit|floatformat:0 }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card card-stat bg-white shadow-sm p-3">
+            <div class="d-flex align-items-center">
+                <div class="rounded-circle bg-info bg-opacity-10 p-3 me-3 text-info fs-3">
+                    <i class="bi bi-geo"></i>
+                </div>
+                <div>
+                    <h6 class="text-muted mb-1 small text-uppercase fw-bold">Mercado Operacional</h6>
+                    <h3 class="mb-0 fw-bold text-dark fs-5">{{ profile.operational_city }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filter Bar -->
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 class="fw-bold m-0"><i class="bi bi-lightning-charge-fill me-2 text-warning"></i>Oportunidades de Compra</h5>
+    <div class="btn-group" role="group">
+        <a href="?status=QUALIFIED" class="btn btn-outline-primary btn-sm {% if status_filter == 'QUALIFIED' %}active{% endif %}">
+            🟢 Aprobadas
+        </a>
+        <a href="?status=LOW_PROFIT" class="btn btn-outline-secondary btn-sm {% if status_filter == 'LOW_PROFIT' %}active{% endif %}">
+            🟡 Ganancia Insuficiente
+        </a>
+        <a href="?status=NON_OPERATIONAL" class="btn btn-outline-secondary btn-sm {% if status_filter == 'NON_OPERATIONAL' %}active{% endif %}">
+            🔴 Datos de Referencia
+        </a>
+        <a href="?status=ALL" class="btn btn-outline-dark btn-sm {% if status_filter == 'ALL' %}active{% endif %}">
+            Ver Todas
+        </a>
+    </div>
+</div>
+
+<!-- Opportunities Cards Grid -->
+<div class="row g-3">
+    {% for opp in opportunities %}
+    <div class="col-md-6 col-lg-4">
+        <div class="card deal-card bg-white h-100 shadow-sm">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <span class="badge {% if opp.status == 'QUALIFIED' %}bg-success{% elif opp.status == 'LOW_PROFIT' %}bg-warning text-dark{% else %}bg-secondary{% endif %} badge-deal">
+                        {{ opp.get_status_display }}
+                    </span>
+                    <a href="{% url 'toggle_favorite' opp.id %}" class="btn btn-sm btn-link text-decoration-none p-0 fs-5">
+                        {% if opp.is_favorite %}<i class="bi bi-star-fill text-warning"></i>{% else %}<i class="bi bi-star text-muted"></i>{% endif %}
+                    </a>
+                </div>
+
+                <h5 class="card-title fw-bold text-dark mb-1">{{ opp.listing.variant }}</h5>
+                <p class="text-muted small mb-2"><i class="bi bi-geo-alt me-1"></i>{{ opp.listing.city }} • <i class="bi bi-tag me-1"></i>{{ opp.listing.get_source_display }}</p>
+
+                <div class="bg-light rounded p-3 mb-3">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="text-muted small">Precio Pedido:</span>
+                        <span class="fw-bold text-dark">${{ opp.listing.asking_price_usd }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="text-muted small">Costo Reparaciones:</span>
+                        <span class="text-danger small">-${{ opp.total_repairs_cost }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="text-muted small">Reventa Estimada:</span>
+                        <span class="text-secondary small">${{ opp.estimated_resale_value }}</span>
+                    </div>
+                    <hr class="my-2">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="fw-bold small">Ganancia Neta Est.:</span>
+                        <span class="fw-bold fs-5 {% if opp.projected_profit >= profile.min_profit %}text-success{% else %}text-muted{% endif %}">
+                            +${{ opp.projected_profit }}
+                        </span>
+                    </div>
+                </div>
+
+                <p class="card-text small text-secondary mb-0">
+                    <i class="bi bi-info-circle me-1"></i>{{ opp.explanation_text }}
+                </p>
+            </div>
+            <div class="card-footer bg-transparent border-0 text-muted small pb-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <span>Capturado: {{ opp.created_at|date:"d M Y" }}</span>
+                    {% if opp.listing.listing_url %}
+                    <a href="{{ opp.listing.listing_url }}" target="_blank" class="btn btn-outline-primary btn-sm py-0">Ver en FB <i class="bi bi-box-arrow-up-right ms-1"></i></a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-12 text-center py-5">
+        <div class="text-muted mb-3 fs-1"><i class="bi bi-inbox"></i></div>
+        <h5>No hay publicaciones registradas con este filtro.</h5>
+        <p class="text-muted small">Haz clic en <strong>"Pegar Oferta"</strong> para analizar anuncios de Facebook o WhatsApp.</p>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

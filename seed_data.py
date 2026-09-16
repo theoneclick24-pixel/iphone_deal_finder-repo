@@ -8,6 +8,8 @@ django.setup()
 from django.contrib.auth.models import User
 from apps.accounts.models import UserProfile
 from apps.catalog.models import IPhoneModel, StorageCapacity, ColorTier, ProductVariant
+from apps.listings.models import Listing, SourceType, ScreenCondition
+from apps.opportunities.services import OpportunityEngine
 
 def seed_database():
     print("=== Seeding iPhone Deal Finder Catalog & Initial Data ===")
@@ -78,6 +80,44 @@ def seed_database():
     profile.min_profit = 35.00
     profile.save()
     print(f"[OK] Perfil configurado: Ciudad = {profile.operational_city}, Rango = ${profile.min_budget}-${profile.max_budget}, Ganancia Mínima = ${profile.min_profit}")
+
+    # 5. Create Sample Listings & Evaluate Opportunities
+    model_11 = IPhoneModel.objects.filter(name="iPhone 11").first()
+    storage_128 = StorageCapacity.objects.filter(gb=128).first()
+    color_white = ColorTier.objects.filter(is_premium_tier=True).first()
+
+    if model_11 and storage_128 and color_white:
+        variant, _ = ProductVariant.objects.get_or_create(
+            iphone_model=model_11,
+            storage=storage_128,
+            color_tier=color_white,
+            defaults={'base_reference_price_usd': 220.00}
+        )
+
+        sample_listings = [
+            ("iPhone 11 128GB Plata bateria 88% impecable en Maturin $160", "Maturín", 160.00, 88, ScreenCondition.INTACT, True, True),
+            ("iPhone 11 128GB Negro bateria 75% pantalla mica partida Maturin $130", "Maturín", 130.00, 75, ScreenCondition.CRACKED, True, True),
+            ("iPhone 11 128GB Blanco impecable Caracas $140", "Caracas", 140.00, 92, ScreenCondition.INTACT, True, True),
+        ]
+
+        for raw, city, price, bat, screen, face, cam in sample_listings:
+            listing, _ = Listing.objects.get_or_create(
+                user=user,
+                raw_title=raw,
+                defaults={
+                    'variant': variant,
+                    'source': SourceType.FACEBOOK,
+                    'city': city,
+                    'asking_price_usd': price,
+                    'battery_health_pct': bat,
+                    'screen_condition': screen,
+                    'face_id_working': face,
+                    'camera_working': cam
+                }
+            )
+            OpportunityEngine.evaluate_and_save_opportunity(user, listing)
+
+        print("[OK] Oportunidades de prueba evaluadas y registradas para el usuario demo.")
 
     print("\n=== Seeding Completado Exitosamente ===")
 

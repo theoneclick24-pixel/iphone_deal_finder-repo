@@ -25,6 +25,9 @@ class ValuationEngine:
         """
         Calculates total repair deductions and net estimated resale value.
         """
+        if not isinstance(base_reference_resale, Decimal):
+            base_reference_resale = Decimal(str(base_reference_resale))
+
         total_repairs = Decimal('0.00')
         deductions_breakdown = []
 
@@ -64,11 +67,13 @@ class ValuationEngine:
         # Fair estimated resale = Base Reference Price - Screen/Body/Defect discounts
         estimated_resale_value = max(Decimal('0.00'), base_reference_resale - (total_repairs * Decimal('0.5')))
         
+        asking_price = Decimal(str(listing.asking_price_usd))
+        
         # Net profit = Estimated Resale Value - Purchase Price - Total Repair Costs
-        net_projected_profit = estimated_resale_value - listing.asking_price_usd - total_repairs
+        net_projected_profit = estimated_resale_value - asking_price - total_repairs
 
         return {
-            "asking_price": listing.asking_price_usd,
+            "asking_price": asking_price,
             "base_reference_resale": base_reference_resale,
             "total_repairs_cost": total_repairs,
             "estimated_resale_value": estimated_resale_value,

@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}iPhone Deal Finder — Dashboard{% endblock %}</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        body { background-color: #f4f6f9; font-family: system-ui, -apple-system, sans-serif; }
+        .navbar-brand { font-weight: 700; letter-spacing: -0.5px; }
+        .card-stat { border: none; border-radius: 12px; transition: transform 0.2s; }
+        .card-stat:hover { transform: translateY(-3px); }
+        .badge-deal { font-size: 0.85rem; padding: 0.5em 0.8em; border-radius: 8px; }
+        .deal-card { border: 1px solid #e2e8f0; border-radius: 12px; transition: all 0.2s; }
+        .deal-card:hover { border-color: #3b82f6; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+    </style>
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
+        <div class="container">
+            <a class="navbar-brand text-primary" href="{% url 'dashboard' %}">
+                <i class="bi bi-phone-vibrate me-2"></i>iPhone Deal Finder
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMain">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navMain">
+                <ul class="navbar-nav ms-auto mb-2 mb-lg-0 align-items-center">
+                    <li class="nav-item me-3">
+                        <span class="badge bg-outline-light text-light border border-secondary px-3 py-2">
+                            <i class="bi bi-geo-alt me-1 text-info"></i> {{ profile.operational_city }}
+                        </span>
+                    </li>
+                    <li class="nav-item me-3">
+                        <span class="badge bg-outline-light text-light border border-secondary px-3 py-2">
+                            <i class="bi bi-cash-coin me-1 text-success"></i> ${ profile.min_budget|floatformat:0 }} - ${ profile.max_budget|floatformat:0 }} USD
+                        </span>
+                    </li>
+                    <li class="nav-item">
+                        <a class="btn btn-primary btn-sm px-3" data-bs-toggle="modal" data-bs-target="#importModal">
+                            <i class="bi bi-plus-circle me-1"></i> Pegar Oferta
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <main class="container py-4">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Import Modal -->
+    <div class="modal fade" id="importModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header bg-dark text-white">
+                    <h5 class="modal-title"><i class="bi bi-lightning-charge me-2 text-warning"></i>Analizar Nueva Oferta</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form action="{% url 'import_listing' %}" method="POST">
+                    {% csrf_token %}
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label font-weight-bold">Pega la descripción completa del anuncio de Facebook / WhatsApp:</label>
+                            <textarea name="raw_text" class="form-control" rows="4" placeholder="Ej: iPhone 11 128gb bateria 85% pantalla impecable en Maturin $180..." required></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Ciudad de la Publicación:</label>
+                            <input type="text" name="city" class="form-control" value="{{ profile.operational_city }}">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary px-4"><i class="bi bi-search me-1"></i> Evaluar Oportunidad</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap 5 JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>

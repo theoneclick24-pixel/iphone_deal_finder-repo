@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+
+{% block title %}Importar Oferta — iPhone Deal Finder{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <div class="card shadow-sm border-0 rounded-3">
+            <div class="card-header bg-dark text-white p-3">
+                <h5 class="mb-0"><i class="bi bi-lightning-charge text-warning me-2"></i>Analizar Nueva Publicación</h5>
+            </div>
+            <div class="card-body p-4">
+                <form action="{% url 'import_listing' %}" method="POST">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Texto o Anuncio de Facebook Marketplace / WhatsApp:</label>
+                        <textarea name="raw_text" class="form-control" rows="5" placeholder="Pega aquí el texto del anuncio completo..." required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Ciudad:</label>
+                        <input type="text" name="city" class="form-control" value="{{ profile.operational_city }}">
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary">Volver al Dashboard</a>
+                        <button type="submit" class="btn btn-primary px-4"><i class="bi bi-cpu me-1"></i> Evaluar Oportunidad</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

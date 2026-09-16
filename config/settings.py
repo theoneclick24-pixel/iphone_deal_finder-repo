@@ -20,6 +20,7 @@ INSTALLED_APPS = [
     'apps.accounts',
     'apps.catalog',
     'apps.listings',
+    'apps.opportunities',
 ]
 
 MIDDLEWARE = [
